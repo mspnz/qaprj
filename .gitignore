@@ -1,0 +1,17 @@
+# Секреты и переменные окружения
+.env
+.env.*
+*.local
+
+# Артефакты запусков пайплайна
+artifacts/
+
+# OpenCode
+.opencode/data/
+opencode.session*
+
+# IDE
+.idea/
+
+# Node
+node_modules/

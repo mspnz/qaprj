@@ -1,0 +1,16 @@
+{
+  "mcp": {
+    "atlassian": {
+      "type": "remote",
+      "url": "https://mcp.atlassian.com/v1/mcp",
+      "oauth": {}
+    },
+	"qase": {
+      "type": "local",
+      "command": ["npx", "-y", "@qase/mcp-server"],
+      "environment": {
+        "QASE_API_TOKEN": "{env:QASE_API_TOKEN}"
+      }
+    }
+  }
+}
