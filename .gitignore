@@ -4,7 +4,7 @@
 *.local
 
 # Артефакты запусков пайплайна
-artifacts/
+#artifacts/
 
 # OpenCode
 .opencode/data/
