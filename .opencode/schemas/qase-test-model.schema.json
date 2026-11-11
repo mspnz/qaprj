@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QaseTestModelArtifact",
+  "type": "object",
+  "required": [
+    "metadata",
+    "suites",
+    "test_cases",
+    "coverage_matrix",
+    "uncovered_requirements"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["confluence_page_id", "run_timestamp", "qase_project_code"],
+      "additionalProperties": false,
+      "properties": {
+        "confluence_page_id": { "type": "string", "pattern": "^[0-9]+$" },
+        "run_timestamp": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}$" },
+        "qase_project_code": { "type": "string", "pattern": "^[A-Z0-9_]+$" }
+      }
+    },
+    "suites": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["suite_id", "title", "parent_suite_id", "qase_suite_id"],
+        "additionalProperties": false,
+        "properties": {
+          "suite_id": { "type": "string", "pattern": "^SUITE-[0-9]+$" },
+          "title": { "type": "string", "minLength": 1 },
+          "parent_suite_id": { "type": ["string", "null"], "pattern": "^SUITE-[0-9]+$" },
+          "qase_suite_id": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "test_cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "local_id",
+          "suite_id",
+          "title",
+          "type",
+          "priority",
+          "preconditions",
+          "steps",
+          "expected_result",
+          "linked_requirement_ids",
+          "linked_task_ids",
+          "export_status",
+          "qase_id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "local_id": { "type": "string", "pattern": "^TC-[0-9]+$" },
+          "suite_id": { "type": "string", "pattern": "^SUITE-[0-9]+$" },
+          "title": { "type": "string", "minLength": 1 },
+          "type": { "type": "string", "enum": ["positive", "negative", "boundary"] },
+          "priority": { "type": "string", "enum": ["high", "medium", "low"] },
+          "preconditions": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["step_number", "action", "test_data", "expected_step_result"],
+              "additionalProperties": false,
+              "properties": {
+                "step_number": { "type": "integer", "minimum": 1 },
+                "action": { "type": "string", "minLength": 1 },
+                "test_data": { "type": "string" },
+                "expected_step_result": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "expected_result": { "type": "string", "minLength": 1 },
+          "linked_requirement_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "pattern": "^(REQ|BR|AC)-[0-9]+$" }
+          },
+          "linked_task_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "pattern": "^TASK-[0-9]+$" }
+          },
+          "export_status": {
+            "type": "string",
+            "enum": ["pending", "exported", "failed"]
+          },
+          "qase_id": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "coverage_matrix": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "type": "string", "pattern": "^TC-[0-9]+$" }
+      }
+    },
+    "uncovered_requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["req_id", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "req_id": { "type": "string", "pattern": "^REQ-[0-9]+$" },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

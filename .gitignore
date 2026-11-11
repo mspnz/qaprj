@@ -2,9 +2,10 @@
 .env
 .env.*
 *.local
+.qase-token
 
 # Артефакты запусков пайплайна
-#artifacts/
+artifacts/
 
 # OpenCode
 .opencode/data/

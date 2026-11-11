@@ -1,16 +1,31 @@
 {
   "mcp": {
-    "atlassian": {
-      "type": "remote",
-      "url": "https://mcp.atlassian.com/v1/mcp",
-      "oauth": {}
-    },
-	"qase": {
+    "qase": {
       "type": "local",
       "command": ["npx", "-y", "@qase/mcp-server"],
       "environment": {
-        "QASE_API_TOKEN": "{env:QASE_API_TOKEN}"
+        "QASE_API_TOKEN": "{file:.qase-token}"
       }
+    },
+    "atlassian": {
+      "type": "remote",
+      "url": "https://mcp.atlassian.com/v2/mcp?tools=all",
+      "oauth": {}
+    }
+  },
+  "tools": {
+    "bash": true,
+    "read": true,
+    "write": true,
+    "edit": true,
+    "glob": true,
+    "grep": true,
+    "task": true
+  },
+  "permission": {
+    "bash": {
+      "python ./.opencode/scripts/validate_artifacts.py*": "allow",
+      "python3 ./.opencode/scripts/validate_artifacts.py*": "allow"
     }
   }
 }
