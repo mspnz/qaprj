@@ -6,6 +6,8 @@
 
 # Артефакты запусков пайплайна
 artifacts/
+# Артефакты запуска Eval кейсов
+evals/results/
 
 # OpenCode
 .opencode/data/
