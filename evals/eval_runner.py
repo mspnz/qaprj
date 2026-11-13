@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 """
-Пакетный Runner для запуска Golden Dataset (EVC-001..EVC-006) и проверки Quality Gate AI-системы.
-
-Особенности:
-- При запуске отдельных кейсов через --case автоматически объединяет (merge) новые результаты
-  с уже сохраненными в evals/results/eval_results.json (если не указан флаг --no-merge).
-- При каждом запуске сохраняет как основной evals/results/eval_results.json, так и архивную
-  копию с таймстемпом evals/results/eval_results_<YYYY-MM-DD_HH-mm-ss>.json.
+Пакетный Runner для запуска Golden Dataset (EVC-001..EVC-010) и проверки Quality Gate AI-системы.
 """
 
 import argparse
@@ -41,14 +35,59 @@ MAX_ERRORS = 0
 
 
 # =============================================================
-# СБОР АРТЕФАКТОВ ИЗ ДИРЕКТОРИИ ЗАПУСКА RUN_DIR
+# КОМПАКТНОЕ ПОСТРОЧНОЕ ФОРМАТИРОВАНИЕ АРТЕФАКТОВ (< 250 СТРОК)
 # =============================================================
+
+def format_artifact_compact_lines(raw_content: str) -> str:
+    """
+    Форматирует JSON-артефакт так, чтобы каждая задача Jira, каждое требование
+    и каждый тест-кейс Qase занимали ровно 1 строку. Благодаря этому все 3 артефакта
+    вместе с отчетом занимают ~200 строк и 100% помещаются в одиночный вызов Read (лимит 2000 строк).
+    """
+    try:
+        data = json.loads(raw_content)
+    except json.JSONDecodeError:
+        return raw_content
+
+    if not isinstance(data, dict):
+        return json.dumps(data, ensure_ascii=False)
+
+    lines: List[str] = ["{"]
+    keys = list(data.keys())
+    for idx, key in enumerate(keys):
+        val = data[key]
+        comma = "," if idx < len(keys) - 1 else ""
+        if isinstance(val, list) and val:
+            lines.append(f'  "{key}": [')
+            for i, item in enumerate(val):
+                item_comma = "," if i < len(val) - 1 else ""
+                lines.append(f"    {json.dumps(item, ensure_ascii=False)}{item_comma}")
+            lines.append(f"  ]{comma}")
+        elif isinstance(val, dict) and val:
+            lines.append(f'  "{key}": {{')
+            sub_keys = list(val.keys())
+            for j, sk in enumerate(sub_keys):
+                sub_val = val[sk]
+                sub_comma = "," if j < len(sub_keys) - 1 else ""
+                if isinstance(sub_val, list) and sub_val and isinstance(sub_val[0], dict):
+                    lines.append(f'    "{sk}": [')
+                    for k, sub_item in enumerate(sub_val):
+                        sc = "," if k < len(sub_val) - 1 else ""
+                        lines.append(f"      {json.dumps(sub_item, ensure_ascii=False)}{sc}")
+                    lines.append(f"    ]{sub_comma}")
+                else:
+                    lines.append(f'    "{sk}": {json.dumps(sub_val, ensure_ascii=False)}{sub_comma}')
+            lines.append(f"  }}{comma}")
+        else:
+            lines.append(f'  "{key}": {json.dumps(val, ensure_ascii=False)}{comma}')
+    lines.append("}")
+    return "\n".join(lines)
+
 
 def collect_latest_run_artifacts(page_id: str) -> str:
     """
     Находит самую свежую папку запуска в ./artifacts/<page_id>/<run_timestamp>/
-    и собирает содержимое final-qa-report.md и ключевых JSON-артефактов
-    (форматируя минифицированные JSON с indent=2, чтобы Read в OpenCode не усекал длинные строки).
+    и собирает содержимое final-qa-report.md и всех 3 JSON-артефактов без усечения.
     """
     page_dir = artifacts_root / str(page_id)
     if not page_dir.exists() or not page_dir.is_dir():
@@ -77,11 +116,7 @@ def collect_latest_run_artifacts(page_id: str) -> str:
         art_path = latest_dir / artifact_name
         if art_path.exists():
             raw_content = art_path.read_text(encoding="utf-8", errors="replace")
-            try:
-                parsed_json = json.loads(raw_content)
-                formatted_content = json.dumps(parsed_json, ensure_ascii=False, indent=2)
-            except json.JSONDecodeError:
-                formatted_content = raw_content
+            formatted_content = format_artifact_compact_lines(raw_content)
             collected_parts.append(f"\n[Файл {artifact_name}]:\n{formatted_content}")
 
     return "\n".join(collected_parts)
@@ -150,10 +185,6 @@ def prepare_prompt(
     page_id: str,
     inline_requirements: Optional[str],
 ) -> Tuple[str, Optional[Path]]:
-    """
-    Формирует короткий однострочный промпт для CLI (безопасный для cmd.exe на Windows).
-    Для inline-кейсов записывает многострочный текст требований во временный файл.
-    """
     if source == "confluence":
         return f"Проанализируй требования со страницы Confluence {page_id}", None
 
@@ -177,10 +208,6 @@ def merge_with_existing_results(
     all_dataset_cases: List[Dict[str, Any]],
     results_file: Path,
 ) -> List[Dict[str, Any]]:
-    """
-    Объединяет новые результаты запуска отдельных кейсов с уже существующими
-    в eval_results.json, сохраняя порядок кейсов из golden_dataset.json.
-    """
     existing_by_id: Dict[str, Dict[str, Any]] = {}
     if results_file.exists():
         try:
@@ -200,10 +227,6 @@ def merge_with_existing_results(
         if cid in existing_by_id:
             merged.append(existing_by_id[cid])
 
-    for cid, item in existing_by_id.items():
-        if cid not in ordered_ids:
-            merged.append(item)
-
     return merged
 
 
@@ -222,7 +245,7 @@ def main() -> int:
         "--case",
         action="append",
         dest="cases",
-        help="Запустить только выбранные ID кейсов (например: --case EVC-005 --case EVC-006)",
+        help="Запустить только выбранные ID кейсов (например: --case EVC-009 --case EVC-010)",
     )
     parser.add_argument(
         "--no-merge",
@@ -526,7 +549,7 @@ def main() -> int:
     print("=" * 80)
 
     # =========================================================
-    # СОХРАНЕНИЕ РЕЗУЛЬТАТОВ (ОСНОВНОЙ ФАЙЛ + ИСТОРИЯ С ТАЙМСТЕМПОМ)
+    # СОХРАНЕНИЕ РЕЗУЛЬТАТОВ
     # =========================================================
 
     report = {

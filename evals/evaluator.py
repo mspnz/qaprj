@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 Гибридный Evaluator (Rules / Schema Validator + LLM-as-a-Judge) для оценки ответов QA-агента.
-Обходит лимит длины командной строки cmd.exe (8191 символ) на Windows за счет передачи
-большого контекста через временный файл.
+Включает автоматический retry при временных сетевых сбоях/лимитах LLM API.
 """
 
 import json
@@ -10,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -123,7 +123,7 @@ def evaluate_response(eval_case: Dict[str, Any], agent_response: str) -> Dict[st
 Ты — независимый Evaluator результатов AI QA Agent.
 ВАЖНО:
 1. НЕ вызывай инструменты создания/редактирования файлов, Bash, Task, Jira, Qase или Confluence.
-2. Не выполняй роль оркестратора. Твоя единственная задача — оценить представленный в этом файле фактический ответ агента относительно заданного Eval Case и сразу вернуть один JSON-объект в текстовом ответе.
+2. Не выполняй роль оркестратора. Твоя единственная задача — оценить представленный в этом файле фактический ответ агента и все три JSON-артефакта относительно заданного Eval Case и сразу вернуть один JSON-объект в текстовом ответе.
 
 ПРАВИЛА ОЦЕНКИ:
 1. Оценивай смысл ответа и созданных артефактов, а не точное совпадение формулировок.
@@ -200,77 +200,83 @@ def evaluate_response(eval_case: Dict[str, Any], agent_response: str) -> Dict[st
     rel_context_path = context_file.relative_to(project_path).as_posix()
 
     short_cli_prompt = (
-        f"Прочитай файл ./{rel_context_path} через инструмент Read и выполни инструкции Evaluator внутри него. "
+        f"Прочитай файл ./{rel_context_path} через инструмент Read (при необходимости прочитай его полностью до конца) "
+        f"и выполни инструкции Evaluator внутри него. "
         f"НЕ вызывай никакие другие инструменты и НЕ запускай сабагентов. "
         f"Верни в ответе ТОЛЬКО чистый JSON-объект оценки для {eval_case['id']} без Markdown-блоков."
     )
 
     opencode_bin = resolve_opencode_executable()
-
-    process = subprocess.Popen(
-        [
-            opencode_bin,
-            "run",
-            "--format",
-            "json",
-            short_cli_prompt,
-        ],
-        cwd=project_path,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        bufsize=1,
-    )
-
-    text_parts: List[str] = []
-    print("Evaluator запущен...")
-
-    if process.stdout:
-        for line in process.stdout:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                event = json.loads(line)
-                event_type = event.get("type")
-                print("EVALUATOR EVENT:", event_type, flush=True)
-                if event_type == "text":
-                    part = event.get("part", {})
-                    text = part.get("text")
-                    if text:
-                        text_parts.append(text)
-            except json.JSONDecodeError:
-                print("Не удалось разобрать событие Evaluator", flush=True)
-
-    return_code = process.wait()
-    print("EVALUATOR RETURN CODE:", return_code)
+    max_attempts = 3
+    last_error: Optional[Exception] = None
 
     try:
-        if context_file.exists():
-            context_file.unlink()
-    except OSError:
-        pass
+        for attempt in range(1, max_attempts + 1):
+            process = subprocess.Popen(
+                [
+                    opencode_bin,
+                    "run",
+                    "--format",
+                    "json",
+                    short_cli_prompt,
+                ],
+                cwd=project_path,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+            )
 
-    if return_code != 0:
-        stderr = process.stderr.read() if process.stderr else ""
-        raise RuntimeError(
-            f"Evaluator завершился с ошибкой. Return code: {return_code}. STDERR: {stderr}"
-        )
+            text_parts: List[str] = []
+            print(f"Evaluator запущен (попытка {attempt}/{max_attempts})...")
 
-    judge_response = "\n".join(text_parts).strip()
-    if not judge_response:
-        raise RuntimeError("Evaluator не вернул текстовый ответ.")
+            if process.stdout:
+                for line in process.stdout:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        event = json.loads(line)
+                        event_type = event.get("type")
+                        print("EVALUATOR EVENT:", event_type, flush=True)
+                        if event_type == "text":
+                            part = event.get("part", {})
+                            text = part.get("text")
+                            if text:
+                                text_parts.append(text)
+                    except json.JSONDecodeError:
+                        print("Не удалось разобрать событие Evaluator", flush=True)
 
-    try:
-        evaluation_result = extract_json_object(judge_response)
-    except json.JSONDecodeError as error:
-        print("\nНе удалось разобрать ответ Evaluator как JSON.")
-        print("\nФактический ответ Evaluator:")
-        print(judge_response)
-        raise RuntimeError("Evaluator вернул невалидный JSON.") from error
+            return_code = process.wait()
+            print("EVALUATOR RETURN CODE:", return_code)
+
+            if return_code == 0 and text_parts:
+                judge_response = "\n".join(text_parts).strip()
+                try:
+                    evaluation_result = extract_json_object(judge_response)
+                    break
+                except Exception as parse_err:
+                    last_error = parse_err
+            else:
+                stderr = process.stderr.read() if process.stderr else ""
+                last_error = RuntimeError(
+                    f"Evaluator завершился с ошибкой. Return code: {return_code}. STDERR: {stderr}"
+                )
+
+            if attempt < max_attempts:
+                print(f"Повторный запуск Evaluator через 5 секунд...")
+                time.sleep(5)
+        else:
+            raise last_error or RuntimeError("Evaluator не смог вернуть корректный JSON.")
+    finally:
+        try:
+            if context_file.exists():
+                context_file.unlink()
+        except OSError:
+            pass
 
     required_fields = [
         "eval_case_id",
