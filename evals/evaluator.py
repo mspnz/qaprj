@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
 Гибридный Evaluator (Rules / Schema Validator + LLM-as-a-Judge) для оценки ответов QA-агента.
-Включает автоматический retry при временных сетевых сбоях/лимитах LLM API.
+Поддерживает явный выбор модели (--model / OPENCODE_MODEL / opencode.json -> deepseek-v4-flash)
+и автоматический retry при временных сетевых сбоях LLM API.
 """
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -22,6 +24,10 @@ project_path = Path(__file__).resolve().parent.parent
 validator_script = project_path / ".opencode" / "scripts" / "validate_artifacts.py"
 artifacts_root = project_path / "artifacts"
 results_dir = Path(__file__).resolve().parent / "results"
+opencode_config_path = project_path / "opencode.json"
+
+DEFAULT_MODEL_NAME = "deepseek-v4-flash"
+_RESOLVED_MODEL_CACHE: Optional[str] = None
 
 
 def resolve_opencode_executable() -> str:
@@ -34,6 +40,70 @@ def resolve_opencode_executable() -> str:
             "Не найден исполняемый файл 'opencode' в PATH. Проверьте 'where.exe opencode'."
         )
     return exe
+
+
+def resolve_opencode_model(cli_model: Optional[str] = None) -> str:
+    """
+    Определяет полное имя модели (<provider>/<model>) для передачи в `opencode run --model`.
+    Приоритет:
+    1) аргумент cli_model (--model)
+    2) переменная окружения OPENCODE_MODEL
+    3) поле "model" в opencode.json
+    4) DEFAULT_MODEL_NAME ("deepseek-v4-flash")
+
+    Если указано короткое имя без префикса провайдера (например, "deepseek-v4-flash"),
+    автоматически ищет полное имя "<provider>/deepseek-v4-flash" через `opencode models`.
+    """
+    global _RESOLVED_MODEL_CACHE
+    if _RESOLVED_MODEL_CACHE and not cli_model:
+        return _RESOLVED_MODEL_CACHE
+
+    target = cli_model or os.environ.get("OPENCODE_MODEL")
+    if not target and opencode_config_path.exists():
+        try:
+            cfg = json.loads(opencode_config_path.read_text(encoding="utf-8"))
+            if isinstance(cfg, dict) and cfg.get("model"):
+                target = str(cfg["model"]).strip()
+        except Exception:
+            pass
+
+    if not target:
+        target = DEFAULT_MODEL_NAME
+
+    # Если уже задан формат provider/model, используем как есть
+    if "/" in target:
+        _RESOLVED_MODEL_CACHE = target
+        return target
+
+    # Иначе запрашиваем список доступных моделей у `opencode models` и ищем совпадение по суффиксу/имени
+    try:
+        opencode_bin = resolve_opencode_executable()
+        proc = subprocess.run(
+            [opencode_bin, "models"],
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=15,
+        )
+        if proc.returncode == 0 and proc.stdout:
+            target_lower = target.lower()
+            for raw_line in proc.stdout.splitlines():
+                candidate = raw_line.strip()
+                if not candidate or " " in candidate:
+                    continue
+                if candidate.lower().endswith("/" + target_lower) or candidate.lower() == target_lower:
+                    _RESOLVED_MODEL_CACHE = candidate
+                    return candidate
+                if target_lower in candidate.lower() and "/" in candidate:
+                    _RESOLVED_MODEL_CACHE = candidate
+                    return candidate
+    except Exception:
+        pass
+
+    _RESOLVED_MODEL_CACHE = target
+    return target
 
 
 # =============================================================
@@ -103,7 +173,11 @@ def extract_json_object(raw_text: str) -> Dict[str, Any]:
 # EVALUATOR
 # =============================================================
 
-def evaluate_response(eval_case: Dict[str, Any], agent_response: str) -> Dict[str, Any]:
+def evaluate_response(
+    eval_case: Dict[str, Any],
+    agent_response: str,
+    model_name: Optional[str] = None,
+) -> Dict[str, Any]:
     eval_input = eval_case["input"]
     source = eval_input.get("source")
     page_id = str(eval_input.get("page_id", ""))
@@ -207,19 +281,23 @@ def evaluate_response(eval_case: Dict[str, Any], agent_response: str) -> Dict[st
     )
 
     opencode_bin = resolve_opencode_executable()
+    resolved_model = resolve_opencode_model(model_name)
     max_attempts = 3
     last_error: Optional[Exception] = None
 
     try:
         for attempt in range(1, max_attempts + 1):
+            cmd = [
+                opencode_bin,
+                "run",
+                "--model",
+                resolved_model,
+                "--format",
+                "json",
+                short_cli_prompt,
+            ]
             process = subprocess.Popen(
-                [
-                    opencode_bin,
-                    "run",
-                    "--format",
-                    "json",
-                    short_cli_prompt,
-                ],
+                cmd,
                 cwd=project_path,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
@@ -231,7 +309,7 @@ def evaluate_response(eval_case: Dict[str, Any], agent_response: str) -> Dict[st
             )
 
             text_parts: List[str] = []
-            print(f"Evaluator запущен (попытка {attempt}/{max_attempts})...")
+            print(f"Evaluator запущен (модель: {resolved_model}, попытка {attempt}/{max_attempts})...")
 
             if process.stdout:
                 for line in process.stdout:
@@ -247,6 +325,9 @@ def evaluate_response(eval_case: Dict[str, Any], agent_response: str) -> Dict[st
                             text = part.get("text")
                             if text:
                                 text_parts.append(text)
+                        elif event_type == "error":
+                            err_info = event.get("error") or event.get("part") or event
+                            print("EVALUATOR ERROR DETAIL:", json.dumps(err_info, ensure_ascii=False), flush=True)
                     except json.JSONDecodeError:
                         print("Не удалось разобрать событие Evaluator", flush=True)
 
@@ -267,7 +348,7 @@ def evaluate_response(eval_case: Dict[str, Any], agent_response: str) -> Dict[st
                 )
 
             if attempt < max_attempts:
-                print(f"Повторный запуск Evaluator через 5 секунд...")
+                print("Повторный запуск Evaluator через 5 секунд...")
                 time.sleep(5)
         else:
             raise last_error or RuntimeError("Evaluator не смог вернуть корректный JSON.")

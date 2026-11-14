@@ -1,4 +1,5 @@
 {
+  "model": "llm-router/deepseek-v4-flash",
   "mcp": {
     "qase": {
       "type": "local",
@@ -25,7 +26,9 @@
   "permission": {
     "bash": {
       "python ./.opencode/scripts/validate_artifacts.py*": "allow",
-      "python3 ./.opencode/scripts/validate_artifacts.py*": "allow"
+      "python .opencode/scripts/validate_artifacts.py*": "allow",
+      "python3 ./.opencode/scripts/validate_artifacts.py*": "allow",
+      "python3 .opencode/scripts/validate_artifacts.py*": "allow"
     }
   }
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Программный валидатор JSON-артефактов для Quality Gates (QG-1..QG-3).
+Программный валидатор JSON-артефактов для Quality Gates (QG-1..QG-3)
+с проверкой защиты от утечки данных (Anti-Data Leakage).
 Не требует сторонних pip-зависимостей (использует только стандартную библиотеку Python 3).
 
 Использование:
@@ -16,7 +17,29 @@ from typing import Any, Dict, List, Set, Tuple
 
 
 OPENCODE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = OPENCODE_DIR.parent
 SCHEMAS_DIR = OPENCODE_DIR / "schemas"
+QASE_TOKEN_FILE = PROJECT_ROOT / ".qase-token"
+
+# Паттерны для перехвата утечек секретов, токенов и системных инструкций в артефактах (Anti-Data Leakage)
+LEAKAGE_PATTERNS: List[Tuple[str, re.Pattern[str]]] = [
+    (
+        "API Token / Secret Key",
+        re.compile(
+            r"\b(sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{25,}|ATATT[A-Za-z0-9_\-=]{25,}|xox[baprs]-[A-Za-z0-9-]{15,})\b"
+        ),
+    ),
+    (
+        "Raw JWT Token",
+        re.compile(r"\beyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}\b"),
+    ),
+    (
+        "Env Credential Assignment",
+        re.compile(
+            r"(?i)\b(JIRA_API_TOKEN|CONFLUENCE_API_TOKEN|QASE_API_TOKEN|OPENAI_API_KEY)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{8,}"
+        ),
+    ),
+]
 
 
 def load_json(path: Path) -> Tuple[Any, str]:
@@ -27,6 +50,30 @@ def load_json(path: Path) -> Tuple[Any, str]:
             return json.load(f), ""
     except Exception as exc:
         return None, f"Ошибка парсинга JSON в файле {path.name}: {exc}"
+
+
+def check_data_leakage(data: Any, artifact_name: str, errors: List[str]) -> None:
+    """
+    Проверяет артефакт на отсутствие утекших секретов, токенов (.qase-token, API keys, JWT)
+    и дампов системной конфигурации.
+    """
+    serialized = json.dumps(data, ensure_ascii=False)
+
+    for label, pattern in LEAKAGE_PATTERNS:
+        if pattern.search(serialized):
+            errors.append(
+                f"{artifact_name} [SECURITY / DATA LEAKAGE]: обнаружена потенциальная утечка секрета ({label}) в артефакте"
+            )
+
+    if QASE_TOKEN_FILE.exists():
+        try:
+            raw_token = QASE_TOKEN_FILE.read_text(encoding="utf-8", errors="ignore").strip()
+            if len(raw_token) >= 12 and raw_token in serialized:
+                errors.append(
+                    f"{artifact_name} [SECURITY / DATA LEAKAGE]: обнаружена прямая утечка токена из .qase-token в артефакте"
+                )
+        except OSError:
+            pass
 
 
 def check_type(val: Any, expected_type: str) -> bool:
@@ -172,6 +219,7 @@ def validate_qg1(run_dir: Path, errors: List[str]) -> Dict[str, Any]:
         return {}
 
     validate_against_schema(data, schema, "requirement-review", errors)
+    check_data_leakage(data, "requirement-review", errors)
     if errors:
         return data
 
@@ -277,6 +325,7 @@ def validate_qg2(
         return {}
 
     validate_against_schema(data, schema, "jira-tasks", errors)
+    check_data_leakage(data, "jira-tasks", errors)
     if errors:
         return data
 
@@ -414,6 +463,7 @@ def validate_qg3(run_dir: Path, is_export: bool, errors: List[str]) -> Dict[str,
         return {}
 
     validate_against_schema(data, schema, "qase-test-model", errors)
+    check_data_leakage(data, "qase-test-model", errors)
     if errors:
         return data
 

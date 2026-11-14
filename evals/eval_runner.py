@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
 """
 Пакетный Runner для запуска Golden Dataset (EVC-001..EVC-010) и проверки Quality Gate AI-системы.
+По умолчанию запускает модель deepseek-v4-flash (либо модель из opencode.json / флага --model).
 """
 
 import argparse
 import json
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from evaluator import evaluate_response, resolve_opencode_executable
+from evaluator import (
+    evaluate_response,
+    resolve_opencode_executable,
+    resolve_opencode_model,
+)
 
 
 # =============================================================
@@ -122,54 +128,80 @@ def collect_latest_run_artifacts(page_id: str) -> str:
     return "\n".join(collected_parts)
 
 
-def run_opencode_agent(prompt: str, page_id: str) -> Tuple[int, str, str]:
+def run_opencode_agent(
+    prompt: str,
+    page_id: str,
+    model_name: Optional[str] = None,
+) -> Tuple[int, str, str]:
     """
-    Запускает orchestrator-agent через OpenCode CLI и объединяет stdout с артефактами запуска.
+    Запускает orchestrator-agent через OpenCode CLI с указанной моделью (deepseek-v4-flash)
+    и автоматическим retry (до 3 попыток) при временных сетевых сбоях LLM API.
     """
     opencode_bin = resolve_opencode_executable()
+    resolved_model = resolve_opencode_model(model_name)
+    max_attempts = 3
+    return_code = 1
+    stderr_text = ""
+    text_parts: List[str] = []
 
-    process = subprocess.Popen(
-        [
+    for attempt in range(1, max_attempts + 1):
+        cmd = [
             opencode_bin,
             "run",
             "--agent",
             "orchestrator-agent",
+            "--model",
+            resolved_model,
             "--format",
             "json",
             prompt,
-        ],
-        cwd=project_path,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        bufsize=1,
-    )
+        ]
+        process = subprocess.Popen(
+            cmd,
+            cwd=project_path,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+        )
 
-    text_parts: List[str] = []
-    print("QA Agent запущен...")
+        text_parts = []
+        had_error_event = False
+        print(f"QA Agent запущен (модель: {resolved_model}, попытка {attempt}/{max_attempts})...")
 
-    if process.stdout:
-        for line in process.stdout:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                event = json.loads(line)
-                event_type = event.get("type")
-                print("AGENT EVENT:", event_type, flush=True)
-                if event_type == "text":
-                    part = event.get("part", {})
-                    text = part.get("text")
-                    if text:
-                        text_parts.append(text)
-            except json.JSONDecodeError:
-                print("Не удалось разобрать событие OpenCode", flush=True)
+        if process.stdout:
+            for line in process.stdout:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    event = json.loads(line)
+                    event_type = event.get("type")
+                    print("AGENT EVENT:", event_type, flush=True)
+                    if event_type == "text":
+                        part = event.get("part", {})
+                        text = part.get("text")
+                        if text:
+                            text_parts.append(text)
+                    elif event_type == "error":
+                        had_error_event = True
+                        err_info = event.get("error") or event.get("part") or event
+                        print("AGENT ERROR DETAIL:", json.dumps(err_info, ensure_ascii=False), flush=True)
+                except json.JSONDecodeError:
+                    print("Не удалось разобрать событие OpenCode", flush=True)
 
-    return_code = process.wait()
-    stderr_text = process.stderr.read() if process.stderr else ""
+        return_code = process.wait()
+        stderr_text = process.stderr.read() if process.stderr else ""
+
+        if return_code == 0 and text_parts and not had_error_event:
+            break
+
+        if attempt < max_attempts:
+            print(f"QA Agent завершился с кодом {return_code}. Повторная попытка через 5 секунд...")
+            time.sleep(5)
 
     stdout_text = "\n".join(text_parts).strip()
     artifacts_text = collect_latest_run_artifacts(page_id)
@@ -252,7 +284,16 @@ def main() -> int:
         action="store_true",
         help="Не объединять результаты частичного запуска (--case) с существующим eval_results.json",
     )
+    parser.add_argument(
+        "--model",
+        dest="model",
+        default=None,
+        help="Явно указать модель OpenCode (по умолчанию берется из opencode.json или deepseek-v4-flash)",
+    )
     args, _ = parser.parse_known_args()
+
+    resolved_model = resolve_opencode_model(args.model)
+    print(f"Используемая модель OpenCode: {resolved_model}")
 
     with open(dataset_path, "r", encoding="utf-8") as file:
         all_dataset_cases: List[Dict[str, Any]] = json.load(file)
@@ -321,7 +362,9 @@ def main() -> int:
         if not agent_response:
             prompt, temp_inline_file = prepare_prompt(source, page_id, inline_requirements)
             try:
-                return_code, agent_response, stderr_text = run_opencode_agent(prompt, page_id)
+                return_code, agent_response, stderr_text = run_opencode_agent(
+                    prompt, page_id, model_name=resolved_model
+                )
             finally:
                 if temp_inline_file and temp_inline_file.exists():
                     try:
@@ -385,7 +428,9 @@ def main() -> int:
             print("Запускаем Evaluator...")
 
             try:
-                evaluation_result = evaluate_response(eval_case, agent_response)
+                evaluation_result = evaluate_response(
+                    eval_case, agent_response, model_name=resolved_model
+                )
 
                 print()
                 print("=" * 80)
