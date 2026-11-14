@@ -5,9 +5,9 @@
 .qase-token
 
 # Артефакты запусков пайплайна
-artifacts/
+#artifacts/
 # Артефакты запуска Eval кейсов
-evals/results/
+#evals/results/
 
 # OpenCode
 .opencode/data/

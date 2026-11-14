@@ -1,0 +1,828 @@
+{
+  "metadata": {
+    "confluence_page_id": "1867778",
+    "run_timestamp": "2026-11-14_14-24",
+    "qase_project_code": "LOGIN"
+  },
+  "suites": [
+    {
+      "suite_id": "SUITE-1",
+      "title": "Форма входа: элементы и видимость пароля",
+      "parent_suite_id": null,
+      "qase_suite_id": 1
+    },
+    {
+      "suite_id": "SUITE-2",
+      "title": "Навигация со страницы входа",
+      "parent_suite_id": null,
+      "qase_suite_id": 2
+    },
+    {
+      "suite_id": "SUITE-3",
+      "title": "Аутентификация через POST /api/v1/auth/login",
+      "parent_suite_id": null,
+      "qase_suite_id": 3
+    },
+    {
+      "suite_id": "SUITE-4",
+      "title": "Клиентская валидация обязательных полей",
+      "parent_suite_id": null,
+      "qase_suite_id": 4
+    },
+    {
+      "suite_id": "SUITE-5",
+      "title": "Обработка серверных и сетевых ошибок",
+      "parent_suite_id": null,
+      "qase_suite_id": 5
+    },
+    {
+      "suite_id": "SUITE-6",
+      "title": "Безопасность передачи и хранения учетных данных",
+      "parent_suite_id": null,
+      "qase_suite_id": 6
+    },
+    {
+      "suite_id": "SUITE-7",
+      "title": "Адаптивность и совместимость",
+      "parent_suite_id": null,
+      "qase_suite_id": 7
+    },
+    {
+      "suite_id": "SUITE-8",
+      "title": "Доступность и поддержка менеджеров паролей",
+      "parent_suite_id": null,
+      "qase_suite_id": 8
+    }
+  ],
+  "test_cases": [
+    {
+      "local_id": "TC-1",
+      "suite_id": "SUITE-1",
+      "title": "Символы поля «Пароль» скрыты по умолчанию",
+      "type": "positive",
+      "priority": "high",
+      "preconditions": [
+        "Страница входа открыта в браузере"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Открыть страницу входа в систему",
+          "test_data": "URL страницы входа",
+          "expected_step_result": "Форма входа отображается, поля «Логин» и «Пароль» доступны"
+        },
+        {
+          "step_number": 2,
+          "action": "Ввести значение в поле «Пароль»",
+          "test_data": "Пароль тестового аккаунта",
+          "expected_step_result": "Введенные символы скрыты (отображаются маскирующими знаками)"
+        },
+        {
+          "step_number": 3,
+          "action": "Проверить тип поля «Пароль» в DOM (DevTools)",
+          "test_data": "Атрибут type элемента input пароля",
+          "expected_step_result": "Поле имеет тип password"
+        }
+      ],
+      "expected_result": "Поле «Пароль» обязательно к заполнению, а вводимые символы скрыты по умолчанию (тип поля password).",
+      "linked_requirement_ids": ["REQ-2"],
+      "linked_task_ids": ["TASK-1", "TASK-3"],
+      "export_status": "exported",
+      "qase_id": 1
+    },
+    {
+      "local_id": "TC-2",
+      "suite_id": "SUITE-1",
+      "title": "Иконка-переключатель переключает видимость пароля",
+      "type": "positive",
+      "priority": "high",
+      "preconditions": [
+        "Страница входа открыта"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Ввести значение в поле «Пароль»",
+          "test_data": "Пароль тестового аккаунта",
+          "expected_step_result": "Символы пароля скрыты"
+        },
+        {
+          "step_number": 2,
+          "action": "Нажать иконку-переключатель «Показать/скрыть пароль»",
+          "test_data": "Клик по иконке в поле пароля",
+          "expected_step_result": "Тип поля меняется на text, введенные символы отображаются открыто"
+        },
+        {
+          "step_number": 3,
+          "action": "Нажать иконку-переключатель повторно",
+          "test_data": "Повторный клик по иконке",
+          "expected_step_result": "Тип поля возвращается в password, символы снова скрыты"
+        }
+      ],
+      "expected_result": "Иконка-переключатель корректно меняет тип поля пароля между password и text.",
+      "linked_requirement_ids": ["REQ-3", "AC-4"],
+      "linked_task_ids": ["TASK-2"],
+      "export_status": "exported",
+      "qase_id": 2
+    },
+    {
+      "local_id": "TC-3",
+      "suite_id": "SUITE-2",
+      "title": "Ссылка «Забыли пароль?» ведет на страницу восстановления доступа",
+      "type": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "Страница входа открыта"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Нажать ссылку «Забыли пароль?»",
+          "test_data": "Клик по ссылке «Забыли пароль?»",
+          "expected_step_result": "Выполняется переход на страницу восстановления доступа"
+        },
+        {
+          "step_number": 2,
+          "action": "Проверить URL открывшейся страницы",
+          "test_data": "Адресная строка браузера",
+          "expected_step_result": "URL страницы — /forgot-password"
+        }
+      ],
+      "expected_result": "Ссылка «Забыли пароль?» перенаправляет на страницу восстановления доступа /forgot-password.",
+      "linked_requirement_ids": ["REQ-6"],
+      "linked_task_ids": ["TASK-1"],
+      "export_status": "exported",
+      "qase_id": 3
+    },
+    {
+      "local_id": "TC-4",
+      "suite_id": "SUITE-2",
+      "title": "Ссылка «Регистрация» ведет на страницу создания аккаунта",
+      "type": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "Страница входа открыта"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Нажать ссылку «Регистрация»",
+          "test_data": "Клик по ссылке «Регистрация»",
+          "expected_step_result": "Выполняется переход на страницу создания аккаунта"
+        },
+        {
+          "step_number": 2,
+          "action": "Проверить URL открывшейся страницы",
+          "test_data": "Адресная строка браузера",
+          "expected_step_result": "URL страницы — /register"
+        }
+      ],
+      "expected_result": "Ссылка «Регистрация» перенаправляет на страницу создания аккаунта /register.",
+      "linked_requirement_ids": ["REQ-7"],
+      "linked_task_ids": ["TASK-1"],
+      "export_status": "exported",
+      "qase_id": 4
+    },
+    {
+      "local_id": "TC-5",
+      "suite_id": "SUITE-3",
+      "title": "Успешный вход с валидными учетными данными",
+      "type": "positive",
+      "priority": "high",
+      "preconditions": [
+        "Существует активный тестовый аккаунт с известными валидными логином и паролем",
+        "Сервер авторизации доступен, эндпоинт POST /api/v1/auth/login отвечает"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Ввести валидный логин тестового аккаунта в поле «Логин»",
+          "test_data": "Валидный логин тестового аккаунта",
+          "expected_step_result": "Значение введено в поле «Логин»"
+        },
+        {
+          "step_number": 2,
+          "action": "Ввести валидный пароль тестового аккаунта в поле «Пароль»",
+          "test_data": "Валидный пароль тестового аккаунта",
+          "expected_step_result": "Значение введено, символы скрыты"
+        },
+        {
+          "step_number": 3,
+          "action": "Нажать кнопку «Войти»",
+          "test_data": "Клик по кнопке «Войти»",
+          "expected_step_result": "Клиент отправляет POST-запрос на /api/v1/auth/login"
+        },
+        {
+          "step_number": 4,
+          "action": "Проверить статус и тело ответа сервера в DevTools (вкладка Network)",
+          "test_data": "Ответ эндпоинта POST /api/v1/auth/login",
+          "expected_step_result": "Сервер вернул статус 200 OK, тело ответа содержит пару токенов access_token и refresh_token"
+        }
+      ],
+      "expected_result": "При валидных учетных данных клиент отправляет POST на /api/v1/auth/login, сервер возвращает 200 OK с парой токенов access_token и refresh_token.",
+      "linked_requirement_ids": ["REQ-9"],
+      "linked_task_ids": ["TASK-4"],
+      "export_status": "exported",
+      "qase_id": 5
+    },
+    {
+      "local_id": "TC-6",
+      "suite_id": "SUITE-3",
+      "title": "Неверный пароль: общее сообщение об ошибке, пароль очищается, логин сохраняется",
+      "type": "negative",
+      "priority": "high",
+      "preconditions": [
+        "Существует активный тестовый аккаунт с известным логином",
+        "Известен пароль, не совпадающий с паролем аккаунта"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Ввести корректный логин тестового аккаунта",
+          "test_data": "Валидный логин тестового аккаунта",
+          "expected_step_result": "Логин введен в поле"
+        },
+        {
+          "step_number": 2,
+          "action": "Ввести неверный пароль",
+          "test_data": "Неверный пароль тестового аккаунта",
+          "expected_step_result": "Пароль введен, символы скрыты"
+        },
+        {
+          "step_number": 3,
+          "action": "Нажать кнопку «Войти» и проверить ответ сервера в DevTools",
+          "test_data": "Клик по кнопке «Войти»",
+          "expected_step_result": "Запрос POST /api/v1/auth/login выполнен, сервер вернул 401 Unauthorized"
+        },
+        {
+          "step_number": 4,
+          "action": "Проверить отображаемое сообщение об ошибке",
+          "test_data": "Текст сообщения на странице",
+          "expected_step_result": "Отображается общее сообщение «Неверный логин или пароль» без уточнения, какое именно поле неверно"
+        },
+        {
+          "step_number": 5,
+          "action": "Проверить состояние полей формы после ошибки",
+          "test_data": "Поля «Логин» и «Пароль»",
+          "expected_step_result": "Поле пароля очищено, ранее введенный логин сохранен в поле"
+        }
+      ],
+      "expected_result": "При неверном пароле (401 Unauthorized) отображается общее сообщение «Неверный логин или пароль» без указания ошибочного поля; пароль очищается, логин сохраняется.",
+      "linked_requirement_ids": ["REQ-12", "BR-1", "BR-5", "AC-2"],
+      "linked_task_ids": ["TASK-5"],
+      "export_status": "exported",
+      "qase_id": 6
+    },
+    {
+      "local_id": "TC-7",
+      "suite_id": "SUITE-3",
+      "title": "Несуществующий логин: сообщение не раскрывает, какое поле неверно",
+      "type": "negative",
+      "priority": "high",
+      "preconditions": [
+        "В системе отсутствует аккаунт с используемым в тесте логином"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Ввести логин, не зарегистрированный в системе",
+          "test_data": "Логин, отсутствующий в системе",
+          "expected_step_result": "Логин введен в поле"
+        },
+        {
+          "step_number": 2,
+          "action": "Ввести любой пароль и нажать кнопку «Войти»",
+          "test_data": "Пароль тестового значения",
+          "expected_step_result": "Запрос POST /api/v1/auth/login выполнен, сервер вернул 401 Unauthorized"
+        },
+        {
+          "step_number": 3,
+          "action": "Сравнить текст сообщения об ошибке с сообщением из сценария неверного пароля",
+          "test_data": "Текст сообщения на странице",
+          "expected_step_result": "Отображается то же общее сообщение «Неверный логин или пароль» без уточнения, какое поле неверно"
+        }
+      ],
+      "expected_result": "При несуществующем логине отображается то же общее сообщение «Неверный логин или пароль», что не позволяет определить, какое именно поле неверно.",
+      "linked_requirement_ids": ["REQ-12", "BR-1"],
+      "linked_task_ids": ["TASK-5"],
+      "export_status": "exported",
+      "qase_id": 7
+    },
+    {
+      "local_id": "TC-8",
+      "suite_id": "SUITE-4",
+      "title": "Отправка формы с пустыми полями: подсветка полей и текст ошибки без запроса на сервер",
+      "type": "negative",
+      "priority": "high",
+      "preconditions": [
+        "Страница входа открыта, поля «Логин» и «Пароль» пусты"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Оставить оба поля пустыми и нажать кнопку «Войти»",
+          "test_data": "Пустые значения полей «Логин» и «Пароль»",
+          "expected_step_result": "Пустые поля подсвечиваются красной рамкой, под каждым полем выводится текст ошибки «Заполните это поле»"
+        },
+        {
+          "step_number": 2,
+          "action": "Проверить в DevTools (вкладка Network), отправлялись ли запросы к серверу",
+          "test_data": "Сетевые запросы после нажатия «Войти»",
+          "expected_step_result": "Запрос на сервер не отправляется"
+        }
+      ],
+      "expected_result": "При незаполненных полях выполняется подсветка пустых полей красной рамкой и выводится текст ошибки «Заполните это поле» под полем без отправки запроса на сервер.",
+      "linked_requirement_ids": ["REQ-13"],
+      "linked_task_ids": ["TASK-3"],
+      "export_status": "exported",
+      "qase_id": 8
+    },
+    {
+      "local_id": "TC-9",
+      "suite_id": "SUITE-4",
+      "title": "Пустое поле «Пароль» при заполненном логине: ошибка обязательности без запроса",
+      "type": "negative",
+      "priority": "high",
+      "preconditions": [
+        "Страница входа открыта"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Ввести логин в поле «Логин»",
+          "test_data": "Валидный логин тестового аккаунта",
+          "expected_step_result": "Логин введен в поле"
+        },
+        {
+          "step_number": 2,
+          "action": "Оставить поле «Пароль» пустым и нажать кнопку «Войти»",
+          "test_data": "Пустое значение поля «Пароль»",
+          "expected_step_result": "Поле пароля подсвечивается красной рамкой, под ним выводится текст ошибки «Заполните это поле»"
+        },
+        {
+          "step_number": 3,
+          "action": "Проверить в DevTools (вкладка Network) наличие запросов к серверу",
+          "test_data": "Сетевые запросы после нажатия «Войти»",
+          "expected_step_result": "Запрос на сервер не отправляется"
+        }
+      ],
+      "expected_result": "Пустое обязательное поле «Пароль» подсвечивается красной рамкой с текстом ошибки «Заполните это поле», запрос на сервер не отправляется.",
+      "linked_requirement_ids": ["REQ-2", "REQ-13"],
+      "linked_task_ids": ["TASK-1", "TASK-3"],
+      "export_status": "exported",
+      "qase_id": 9
+    },
+    {
+      "local_id": "TC-10",
+      "suite_id": "SUITE-4",
+      "title": "Пустое поле «Логин» при заполненном пароле: ошибка обязательности без запроса",
+      "type": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "Страница входа открыта"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Ввести пароль в поле «Пароль»",
+          "test_data": "Пароль тестового аккаунта",
+          "expected_step_result": "Пароль введен, символы скрыты"
+        },
+        {
+          "step_number": 2,
+          "action": "Оставить поле «Логин» пустым и нажать кнопку «Войти»",
+          "test_data": "Пустое значение поля «Логин»",
+          "expected_step_result": "Поле логина подсвечивается красной рамкой, под ним выводится текст ошибки «Заполните это поле»"
+        },
+        {
+          "step_number": 3,
+          "action": "Проверить в DevTools (вкладка Network) наличие запросов к серверу",
+          "test_data": "Сетевые запросы после нажатия «Войти»",
+          "expected_step_result": "Запрос на сервер не отправляется"
+        }
+      ],
+      "expected_result": "Пустое поле «Логин» подсвечивается красной рамкой с текстом ошибки «Заполните это поле», запрос на сервер не отправляется.",
+      "linked_requirement_ids": ["REQ-13"],
+      "linked_task_ids": ["TASK-3"],
+      "export_status": "exported",
+      "qase_id": 10
+    },
+    {
+      "local_id": "TC-11",
+      "suite_id": "SUITE-5",
+      "title": "Ошибка сервера 5xx при входе: показ всплывающего уведомления",
+      "type": "negative",
+      "priority": "high",
+      "preconditions": [
+        "Есть возможность эмулировать ответ сервера авторизации со статусом 5xx (тестовый стенд или подмена ответа)"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Ввести валидные логин и пароль и нажать кнопку «Войти»",
+          "test_data": "Валидные логин и пароль тестового аккаунта",
+          "expected_step_result": "Клиент отправляет POST-запрос на /api/v1/auth/login"
+        },
+        {
+          "step_number": 2,
+          "action": "Смоделировать ответ сервера со статусом 500/502/503",
+          "test_data": "HTTP 5xx от эндпоинта авторизации",
+          "expected_step_result": "Отображается всплывающее уведомление (toast) «Сервис временно недоступен. Попробуйте позже»"
+        }
+      ],
+      "expected_result": "При ошибке сервера (5xx) выводится всплывающее уведомление (toast) «Сервис временно недоступен. Попробуйте позже».",
+      "linked_requirement_ids": ["REQ-15"],
+      "linked_task_ids": ["TASK-5"],
+      "export_status": "exported",
+      "qase_id": 11
+    },
+    {
+      "local_id": "TC-12",
+      "suite_id": "SUITE-5",
+      "title": "Таймаут или сетевая ошибка при входе: показ всплывающего уведомления",
+      "type": "negative",
+      "priority": "high",
+      "preconditions": [
+        "Есть возможность эмулировать таймаут или обрыв сетевого соединения с сервером авторизации"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Ввести валидные логин и пароль и нажать кнопку «Войти»",
+          "test_data": "Валидные логин и пароль тестового аккаунта",
+          "expected_step_result": "Клиент отправляет POST-запрос на /api/v1/auth/login"
+        },
+        {
+          "step_number": 2,
+          "action": "Смоделировать таймаут ответа сервера или сетевую ошибку",
+          "test_data": "Таймаут / обрыв соединения",
+          "expected_step_result": "Отображается всплывающее уведомление (toast) «Сервис временно недоступен. Попробуйте позже»"
+        }
+      ],
+      "expected_result": "При таймауте или сетевой ошибке выводится всплывающее уведомление (toast) «Сервис временно недоступен. Попробуйте позже».",
+      "linked_requirement_ids": ["REQ-15"],
+      "linked_task_ids": ["TASK-5"],
+      "export_status": "exported",
+      "qase_id": 12
+    },
+    {
+      "local_id": "TC-13",
+      "suite_id": "SUITE-6",
+      "title": "Передача данных входа исключительно по HTTPS (TLS 1.2/1.3)",
+      "type": "positive",
+      "priority": "high",
+      "preconditions": [
+        "Страница входа развернута на тестовом стенде"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Открыть страницу входа по HTTPS и проверить параметры соединения в DevTools (Security)",
+          "test_data": "URL страницы входа по HTTPS",
+          "expected_step_result": "Соединение установлено по HTTPS, используется TLS 1.2 или TLS 1.3"
+        },
+        {
+          "step_number": 2,
+          "action": "Выполнить вход с валидными данными и проверить протокол запроса авторизации в DevTools (Network)",
+          "test_data": "Валидные логин и пароль тестового аккаунта",
+          "expected_step_result": "Запрос POST /api/v1/auth/login выполняется по HTTPS"
+        },
+        {
+          "step_number": 3,
+          "action": "Попытаться открыть страницу входа по протоколу HTTP",
+          "test_data": "URL страницы входа по HTTP",
+          "expected_step_result": "Учетные данные не передаются по незашифрованному протоколу HTTP"
+        }
+      ],
+      "expected_result": "Передача данных при входе осуществляется исключительно по протоколу HTTPS (TLS 1.2/1.3).",
+      "linked_requirement_ids": ["REQ-16"],
+      "linked_task_ids": ["TASK-4"],
+      "export_status": "exported",
+      "qase_id": 13
+    },
+    {
+      "local_id": "TC-14",
+      "suite_id": "SUITE-6",
+      "title": "refresh_token хранится в cookie с атрибутами HttpOnly, Secure, SameSite=Strict",
+      "type": "positive",
+      "priority": "high",
+      "preconditions": [
+        "Существует активный тестовый аккаунт с валидными учетными данными"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Выполнить успешный вход в систему",
+          "test_data": "Валидные логин и пароль тестового аккаунта",
+          "expected_step_result": "Сервер вернул 200 OK с парой токенов"
+        },
+        {
+          "step_number": 2,
+          "action": "Открыть DevTools → Application → Cookies и найти cookie с refresh-токеном",
+          "test_data": "Список cookie домена",
+          "expected_step_result": "refresh_token передан и сохранен в cookie"
+        },
+        {
+          "step_number": 3,
+          "action": "Проверить атрибуты cookie refresh_token",
+          "test_data": "Атрибуты cookie: HttpOnly, Secure, SameSite",
+          "expected_step_result": "Установлены атрибуты HttpOnly, Secure и SameSite=Strict"
+        },
+        {
+          "step_number": 4,
+          "action": "Выполнить в консоли браузера запрос document.cookie",
+          "test_data": "document.cookie",
+          "expected_step_result": "Значение refresh_token недоступно из JavaScript (отсутствует в выводе document.cookie)"
+        }
+      ],
+      "expected_result": "refresh_token передается и хранится в cookie с атрибутами HttpOnly, Secure, SameSite=Strict.",
+      "linked_requirement_ids": ["REQ-18"],
+      "linked_task_ids": ["TASK-6"],
+      "export_status": "exported",
+      "qase_id": 14
+    },
+    {
+      "local_id": "TC-15",
+      "suite_id": "SUITE-6",
+      "title": "Пароль на бэкенде хранится только в виде хэша Argon2id или bcrypt",
+      "type": "positive",
+      "priority": "high",
+      "preconditions": [
+        "Есть доступ к хранилищу данных и конфигурации бэкенда тестового стенда",
+        "Известен пароль тестового аккаунта в открытом виде"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Найти в хранилище запись тестового аккаунта и значение поля пароля",
+          "test_data": "Запись тестового аккаунта в хранилище",
+          "expected_step_result": "Значение пароля не совпадает с открытым паролем аккаунта и представляет собой хэш"
+        },
+        {
+          "step_number": 2,
+          "action": "Проверить алгоритм хэширования пароля (по формату хэша/конфигурации бэкенда)",
+          "test_data": "Формат хэша и настройки хэширования",
+          "expected_step_result": "Используется алгоритм Argon2id или bcrypt"
+        }
+      ],
+      "expected_result": "Пароли на бэкенде сверяются только по хэшу; в хранилище отсутствует открытый пароль, используется Argon2id или bcrypt.",
+      "linked_requirement_ids": ["REQ-19"],
+      "linked_task_ids": ["TASK-7"],
+      "export_status": "exported",
+      "qase_id": 15
+    },
+    {
+      "local_id": "TC-16",
+      "suite_id": "SUITE-7",
+      "title": "Отображение страницы входа на минимальном разрешении 320px",
+      "type": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "Доступен браузер с DevTools (Responsive mode) или мобильное устройство с шириной экрана 320px"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Установить ширину вьюпорта 320px и открыть страницу входа",
+          "test_data": "Ширина вьюпорта 320px",
+          "expected_step_result": "Страница входа корректно отображается: все элементы формы видны и доступны для взаимодействия"
+        },
+        {
+          "step_number": 2,
+          "action": "Проверить доступность полей ввода, кнопки «Войти» и ссылок навигации при 320px",
+          "test_data": "Элементы формы на вьюпорте 320px",
+          "expected_step_result": "Все элементы формы отображаются без искажений и перекрытий и доступны для использования"
+        }
+      ],
+      "expected_result": "Страница входа корректно отображается на минимальном разрешении 320px.",
+      "linked_requirement_ids": ["REQ-20"],
+      "linked_task_ids": ["TASK-1"],
+      "export_status": "exported",
+      "qase_id": 16
+    },
+    {
+      "local_id": "TC-17",
+      "suite_id": "SUITE-7",
+      "title": "Отображение страницы входа на максимальном разрешении 4K",
+      "type": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "Доступен монитор или эмуляция разрешения 4K (3840x2160)"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Установить разрешение экрана 3840x2160 и открыть страницу входа",
+          "test_data": "Разрешение 3840x2160 (4K)",
+          "expected_step_result": "Страница входа корректно отображается: элементы формы видны и не искажены"
+        },
+        {
+          "step_number": 2,
+          "action": "Проверить доступность полей ввода, кнопки «Войти» и ссылок навигации при 4K",
+          "test_data": "Элементы формы на разрешении 4K",
+          "expected_step_result": "Все элементы формы доступны для использования и отображаются без искажений"
+        }
+      ],
+      "expected_result": "Страница входа корректно отображается на максимальном разрешении 4K.",
+      "linked_requirement_ids": ["REQ-20"],
+      "linked_task_ids": ["TASK-1"],
+      "export_status": "exported",
+      "qase_id": 17
+    },
+    {
+      "local_id": "TC-18",
+      "suite_id": "SUITE-7",
+      "title": "Кросс-браузерная проверка страницы входа",
+      "type": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "Доступны актуальные версии браузеров Chrome, Safari, Firefox и мобильные браузеры"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Открыть страницу входа в Chrome и выполнить вход с валидными данными",
+          "test_data": "Валидные логин и пароль тестового аккаунта",
+          "expected_step_result": "Страница отображается корректно, вход выполняется успешно"
+        },
+        {
+          "step_number": 2,
+          "action": "Повторить проверку в Safari",
+          "test_data": "Валидные логин и пароль тестового аккаунта",
+          "expected_step_result": "Страница отображается корректно, вход выполняется успешно"
+        },
+        {
+          "step_number": 3,
+          "action": "Повторить проверку в Firefox",
+          "test_data": "Валидные логин и пароль тестового аккаунта",
+          "expected_step_result": "Страница отображается корректно, вход выполняется успешно"
+        },
+        {
+          "step_number": 4,
+          "action": "Повторить проверку в мобильных браузерах",
+          "test_data": "Валидные логин и пароль тестового аккаунта",
+          "expected_step_result": "Страница отображается корректно, вход выполняется успешно"
+        }
+      ],
+      "expected_result": "Страница входа корректно отображается в актуальных версиях Chrome, Safari, Firefox и мобильных браузерах.",
+      "linked_requirement_ids": ["REQ-20", "AC-6"],
+      "linked_task_ids": ["TASK-1"],
+      "export_status": "exported",
+      "qase_id": 18
+    },
+    {
+      "local_id": "TC-19",
+      "suite_id": "SUITE-8",
+      "title": "Атрибуты autocomplete обеспечивают работу менеджеров паролей",
+      "type": "positive",
+      "priority": "high",
+      "preconditions": [
+        "Страница входа открыта",
+        "В браузере сохранены учетные данные для тестового аккаунта"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Проверить в DOM атрибуты autocomplete полей формы",
+          "test_data": "Атрибуты autocomplete полей «Логин» и «Пароль»",
+          "expected_step_result": "Поле логина имеет autocomplete=\"username\", поле пароля — autocomplete=\"current-password\""
+        },
+        {
+          "step_number": 2,
+          "action": "Открыть страницу входа и воспользоваться встроенным менеджером паролей браузера",
+          "test_data": "Сохраненные учетные данные тестового аккаунта",
+          "expected_step_result": "Менеджер паролей предлагает и автозаполняет сохраненные логин и пароль в соответствующих полях"
+        }
+      ],
+      "expected_result": "Форма входа поддерживает менеджеры паролей браузера через атрибуты autocomplete=\"username\" и autocomplete=\"current-password\".",
+      "linked_requirement_ids": ["REQ-21"],
+      "linked_task_ids": ["TASK-8"],
+      "export_status": "exported",
+      "qase_id": 19
+    },
+    {
+      "local_id": "TC-20",
+      "suite_id": "SUITE-8",
+      "title": "Корректный порядок перехода по элементам формы клавишей Tab",
+      "type": "positive",
+      "priority": "high",
+      "preconditions": [
+        "Страница входа открыта",
+        "Фокус ввода установлен на первом элементе формы"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Установить фокус на поле «Логин» и последовательно нажимать клавишу Tab",
+          "test_data": "Клавиша Tab",
+          "expected_step_result": "Фокус последовательно перемещается по элементам формы в логическом порядке без пропуска элементов и без «ловушек» фокуса"
+        },
+        {
+          "step_number": 2,
+          "action": "Проверить видимость индикации фокуса на каждом элементе",
+          "test_data": "Визуальное состояние элементов при фокусе",
+          "expected_step_result": "Каждый элемент формы при получении фокуса имеет видимую индикацию"
+        }
+      ],
+      "expected_result": "Обеспечивается корректный порядок перехода по элементам формы через клавишу Tab.",
+      "linked_requirement_ids": ["REQ-22"],
+      "linked_task_ids": ["TASK-4"],
+      "export_status": "exported",
+      "qase_id": 20
+    },
+    {
+      "local_id": "TC-21",
+      "suite_id": "SUITE-8",
+      "title": "Отправка формы входа по нажатию клавиши Enter",
+      "type": "positive",
+      "priority": "high",
+      "preconditions": [
+        "Существует активный тестовый аккаунт с валидными учетными данными"
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "Ввести валидные логин и пароль в поля формы",
+          "test_data": "Валидные логин и пароль тестового аккаунта",
+          "expected_step_result": "Значения введены в поля формы"
+        },
+        {
+          "step_number": 2,
+          "action": "Нажать клавишу Enter в поле «Пароль»",
+          "test_data": "Клавиша Enter",
+          "expected_step_result": "Форма отправляется без нажатия кнопки «Войти»: выполняется POST-запрос на /api/v1/auth/login"
+        },
+        {
+          "step_number": 3,
+          "action": "Проверить ответ сервера в DevTools (вкладка Network)",
+          "test_data": "Ответ эндпоинта POST /api/v1/auth/login",
+          "expected_step_result": "Сервер вернул 200 OK с парой токенов access_token и refresh_token"
+        }
+      ],
+      "expected_result": "Форма отправляется по нажатию клавиши Enter: выполняется POST-запрос на /api/v1/auth/login с ответом 200 OK и парой токенов.",
+      "linked_requirement_ids": ["REQ-22", "REQ-9"],
+      "linked_task_ids": ["TASK-4"],
+      "export_status": "exported",
+      "qase_id": 21
+    }
+  ],
+  "coverage_matrix": {
+    "REQ-2": ["TC-1", "TC-9"],
+    "REQ-3": ["TC-2"],
+    "REQ-6": ["TC-3"],
+    "REQ-7": ["TC-4"],
+    "REQ-9": ["TC-5", "TC-21"],
+    "REQ-12": ["TC-6", "TC-7"],
+    "REQ-13": ["TC-8", "TC-9", "TC-10"],
+    "REQ-15": ["TC-11", "TC-12"],
+    "REQ-16": ["TC-13"],
+    "REQ-18": ["TC-14"],
+    "REQ-19": ["TC-15"],
+    "REQ-20": ["TC-16", "TC-17", "TC-18"],
+    "REQ-21": ["TC-19"],
+    "REQ-22": ["TC-20", "TC-21"],
+    "BR-1": ["TC-6", "TC-7"],
+    "BR-5": ["TC-6"],
+    "AC-2": ["TC-6"],
+    "AC-4": ["TC-2"],
+    "AC-6": ["TC-18"]
+  },
+  "uncovered_requirements": [
+    {
+      "req_id": "REQ-1",
+      "reason": "Blocked (MIS-1, AMB-1): не определены допустимые форматы email/маска телефона и текст ошибки клиентской валидации формата логина, требуется ответ владельца требований."
+    },
+    {
+      "req_id": "REQ-4",
+      "reason": "Blocked (MIS-2): не определено время жизни refresh-токена по умолчанию без «Запомнить меня» и способ передачи значения чекбокса в запросе авторизации."
+    },
+    {
+      "req_id": "REQ-5",
+      "reason": "Blocked (CNT-1): противоречие между блокировкой кнопки «Войти» при пустых полях и требованием вывода ошибок обязательности, а также не определен механизм защиты от повторной отправки."
+    },
+    {
+      "req_id": "REQ-8",
+      "reason": "Blocked (MIS-3): не определен финальный перечень OAuth-провайдеров и правила связывания SSO-аккаунта с существующим аккаунтом."
+    },
+    {
+      "req_id": "REQ-10",
+      "reason": "Blocked (MIS-4): отсутствует описание шага ввода OTP при 2FA (тип кода, срок действия, обработка ошибок, возврат к вводу пароля)."
+    },
+    {
+      "req_id": "REQ-11",
+      "reason": "Blocked (AMB-2): не определен приоритет между /dashboard и redirect_uri, правила валидации redirect_uri и поведение при его отсутствии."
+    },
+    {
+      "req_id": "REQ-14",
+      "reason": "Blocked (MIS-5): не определены текст сообщения о блокировке аккаунта, состав отображаемой причины и адрес ссылки на службу поддержки."
+    },
+    {
+      "req_id": "REQ-17",
+      "reason": "Blocked (CNT-2, CNT-1): противоречие порогов 3 и 5 неудачных попыток, не выбран механизм защиты (CAPTCHA или временная блокировка) и не определен срок блокировки."
+    },
+    {
+      "req_id": "REQ-23",
+      "reason": "Blocked (MIS-6): не определено понятие «стандартная нагрузка» и методика измерения времени ответа API (перцентиль, условия измерения)."
+    }
+  ]
+}
